@@ -18,14 +18,14 @@ type SimpleQueue struct {
 	varSize *expvar.Int
 }
 
-func NewSimpleQueue(name string) Queue {
+func NewSimpleQueue(name string) *SimpleQueue {
 	s := new(SimpleQueue)
 	s.varSize = expvar.NewInt(name)
 	return s
 }
 
 // Push adds an element to the back of the queue.
-func (q *SimpleQueue) Push(page *url.URL) {
+func (q *SimpleQueue) Push(page *url.URL) error {
 	n := &node{Page: page}
 	if q.head == nil {
 		q.head = n
@@ -35,6 +35,7 @@ func (q *SimpleQueue) Push(page *url.URL) {
 	q.tail = n
 	q.size += 1
 	q.varSize.Add(1)
+	return nil
 }
 
 // Pop returns the first element in the queue. If the queue is empty, the

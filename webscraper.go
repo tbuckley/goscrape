@@ -8,6 +8,6 @@ import (
 type WebScraper interface {
 	Enqueue(*url.URL)
 	AddHandler(*regexp.Regexp, Handler)
-	AddHandlerPriority(*regexp.Regexp, Handler, int)
+	AddHandlerPriority(*regexp.Regexp, Handler, uint)
 	Start()
 }

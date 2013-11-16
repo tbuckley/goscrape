@@ -23,10 +23,9 @@ func HrefToUrl(base *url.URL, href string) (*url.URL, bool) {
 	return hrefURL, true
 }
 
-// Default finds the links on a page and adds them to the scraper's queue.
-func Default(s goscrape.WebScraper, page *url.URL) {
-	// Load a page
-	query, err := htmlutils.NewQuery(page)
+func DefaultPage(s goscrape.WebScraper, page *url.URL, body []byte) {
+	// Create a query
+	query, err := htmlutils.NewQueryFromPage(body)
 	if err != nil {
 		log.Printf("Error w/ Query: %s", err)
 		return
@@ -42,4 +41,15 @@ func Default(s goscrape.WebScraper, page *url.URL) {
 			s.Enqueue(hrefURL)
 		}
 	}
+}
+
+// Default finds the links on a page and adds them to the scraper's queue.
+func Default(s goscrape.WebScraper, page *url.URL) {
+	// Load a page
+	body, err := htmlutils.FetchPage(page)
+	if err != nil {
+		log.Printf("Error w/ Query: %s", err)
+		return
+	}
+	DefaultPage(s, page, body)
 }
