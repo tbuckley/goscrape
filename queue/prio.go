@@ -34,7 +34,7 @@ func (q *PrioQueue) Push(page *url.URL) error {
 func (q *PrioQueue) PushPriority(page *url.URL, prio uint) error {
 	q.bitmap.Set(prio, true)
 	q.queues[prio].Push(page)
-	q.length += 1
+	q.length++
 	q.varSize.Add(1)
 	return nil
 }
