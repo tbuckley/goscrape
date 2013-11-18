@@ -4,6 +4,7 @@ import (
 	"expvar"
 	"net/url"
 	"regexp"
+	"sync"
 
 	"github.com/tbuckley/goscrape/queue"
 	"github.com/tbuckley/goscrape/registry"
@@ -20,6 +21,8 @@ type Scraper struct {
 	registry registry.Registry
 	handlers *PatternHandler
 	pagechan chan *url.URL
+	wg       sync.WaitGroup
+	quitchan chan bool
 }
 
 func NewScraper() WebScraper {
@@ -37,6 +40,7 @@ func NewScraper() WebScraper {
 func (s *Scraper) Enqueue(page *url.URL) {
 	// @TODO(tbuckley) Rewrite the URL
 	if s.registry.RegisterIfNot(page) {
+		s.wg.Add(1)
 		_, prio, ok := s.handlers.GetHandler(page)
 		if ok {
 			s.queue.PushPriority(page, prio)
@@ -69,25 +73,39 @@ func (s *Scraper) handle(page *url.URL) {
 
 func (s *Scraper) handlerDaemon() {
 	for {
-		page, ok := <-s.pagechan
-		if ok {
+		select {
+		case page := <-s.pagechan:
 			// Got a page, handle it
 			s.handle(page)
-		} else {
-			// Channel was closed
-			return
+			s.wg.Done()
+		case _, ok := <-s.quitchan:
+			if !ok {
+				return
+			}
+		}
+	}
+}
+
+func (s *Scraper) producerDaemon() {
+	for {
+		select {
+		case s.pagechan <- s.queue.PopBlock():
+		case _, ok := <-s.quitchan:
+			if !ok {
+				return
+			}
 		}
 	}
 }
 
 func (s *Scraper) Start() {
+	s.quitchan = make(chan bool)
+
 	for i := 0; i < 20; i++ {
 		go s.handlerDaemon()
 	}
+	go s.producerDaemon()
 
-	// @TODO(tbuckley) figure out how to determine completion and exit gracefully
-	// Do you need to tell how many workers are free?
-	for {
-		s.pagechan <- s.queue.PopBlock()
-	}
+	s.wg.Wait()
+	close(s.quitchan)
 }
