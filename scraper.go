@@ -40,11 +40,11 @@ func NewScraper() WebScraper {
 func (s *Scraper) Enqueue(page *url.URL) {
 	// @TODO(tbuckley) Rewrite the URL
 	if s.registry.RegisterIfNot(page) {
-		s.wg.Add(1)
 		_, prio, ok := s.handlers.GetHandler(page)
 		if ok {
-			s.queue.PushPriority(page, prio)
+			s.wg.Add(1)
 			varEnqueued.Add(1)
+			s.queue.PushPriority(page, prio)
 		}
 	}
 }
@@ -71,11 +71,10 @@ func (s *Scraper) handle(page *url.URL) {
 	}
 }
 
-func (s *Scraper) handlerDaemon() {
+func (s *Scraper) consumerDaemon() {
 	for {
 		select {
 		case page := <-s.pagechan:
-			// Got a page, handle it
 			s.handle(page)
 			s.wg.Done()
 		case _, ok := <-s.quitchan:
@@ -102,7 +101,7 @@ func (s *Scraper) Start() {
 	s.quitchan = make(chan bool)
 
 	for i := 0; i < 20; i++ {
-		go s.handlerDaemon()
+		go s.consumerDaemon()
 	}
 	go s.producerDaemon()
 
